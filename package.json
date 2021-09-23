@@ -1,0 +1,41 @@
+{
+  "name": "ss2vue3",
+  "description": "Snakeskin to Vue3.",
+  "license": "MIT",
+  "homepage": "https://github.com/SnakeskinTpl/ss2vue3",
+  "main": "index.js",
+  "version": "1.0.0",
+  "author": {
+    "name": "kobezzza",
+    "email": "kobezzza@mail.ru",
+    "url": "https://github.com/kobezzza"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/SnakeskinTpl/ss2vue3.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SnakeskinTpl/ss2vue3/issues"
+  },
+  "engines": {
+    "node": ">= 12"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "keywords": [
+    "vue",
+    "snakeskin"
+  ],
+  "devDependencies": {
+    "@vue/compiler-sfc": "^3.2.14",
+    "babel-eslint": "^10.1.0",
+    "eslint": "^7.32.0",
+    "snakeskin": "^7.5.1"
+  },
+  "peerDependencies": {
+    "snakeskin": "^7.5.1",
+    "@vue/compiler-sfc": "*"
+  },
+  "dependencies": {}
+}
