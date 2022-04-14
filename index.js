@@ -32,11 +32,11 @@ function template(id, fn, txt, p) {
 		...p
 	}).code;
 
-	code = code.replace(importRgxp, (_, vars) => `const {${vars.replace(asRgxp, ': ')}} = this;`);
+	code = code.replace(importRgxp, (_, vars) => `const {${vars.replace(asRgxp, ': ')}} = this.$renderEngine;`);
 	code = code.replace(exportRgxp, '');
 
 	code = `{
-		render: ${toFunction(`${code}; return render.call(this);`)}
+		render: ${toFunction(`${code}; return render.apply(this, arguments);`)}
 	};`;
 
 	return `${id} = ${fn}return ${code}};`;
