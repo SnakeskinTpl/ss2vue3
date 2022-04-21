@@ -12,22 +12,9 @@ const
 	snakeskin = require('snakeskin'),
 	sfc = require('@vue/compiler-sfc');
 
-function toFunction(code) {
-	return `function () {${code}}`;
-}
-
-function setParams(p) {
-	return {...p};
-}
-
-const
-	importRgxp = /\bimport\s+{([^}]*)}\s+from\s+(['"])vue\2/g,
-	exportRgxp = /\bexport\s+/g;
-
-const
-	asRgxp = /\sas\s/g,
-	commaRgxp = /\s*,\s*/,
-	colonRgxp = /\s*:\s*/;
+exports.adapter = function (txt, opt_params, opt_info) {
+	return snakeskin.adapter(txt, {setParams, template}, opt_params, opt_info);
+};
 
 function template(id, fn, txt, p) {
 	let code = sfc.compileTemplate({
@@ -36,36 +23,35 @@ function template(id, fn, txt, p) {
 		...p
 	}).code;
 
-	code = code.replace(importRgxp, (_, vars) => {
-		vars = vars.replace(asRgxp, ': ');
+	const
+		vars = [];
 
-		const
-			resolvedVars = [];
+	code = code
+		.replace(/render\s*\(.*?\)\s*{/, 'render() {')
 
-		vars.split(commaRgxp).forEach((varDecl) => {
-			const v = varDecl.split(colonRgxp);
-			resolvedVars.push(v[1] ?? v[0]);
-		});
+		.replace(/\bexport\s+/g, '')
 
-		let
-			res = `let {${vars}} = this.$renderEngine.render;`;
+		.replace(/\bimport\s+{([^}]*)}\s+from\s+(['"])vue\2/g, (_, decl) => {
+			decl = decl.replace(/\sas\s/g, ': ');
 
-		resolvedVars.forEach((v) => {
-			res += `${v} = ${v}.bind(this);`;
-		});
+			decl.split(/\s*,\s*/).forEach((varDecl) => {
+				const v = varDecl.split(/\s*:\s*/);
+				vars.push(v[1] ?? v[0]);
+			});
 
-		return res;
-	});
+			return `const {${decl}} = _ctx.$renderEngine.render;`;
+		})
 
-	code = code.replace(exportRgxp, '');
+		.replace(new RegExp(`\\b(${vars.join('|')})[(](\\s*[)])?`, 'g'), (_, $1, $2) =>
+			$2 ? `${$1}.call(_ctx)` : `${$1}.call(_ctx,`);
 
-	code = `{
-		render: ${toFunction(`${code}; return render.apply(this, arguments);`)}
-	};`;
+	return `${id} = ${fn}return ${toFunction(`${code}; return render;`)}};`;
 
-	return `${id} = ${fn}return ${code}};`;
+	function toFunction(code) {
+		return `function (_ctx, _cache) {${code}}`;
+	}
 }
 
-exports.adapter = function (txt, opt_params, opt_info) {
-	return snakeskin.adapter(txt, {setParams, template}, opt_params, opt_info);
-};
+function setParams(p) {
+	return {...p};
+}
