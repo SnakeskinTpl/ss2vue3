@@ -22,8 +22,12 @@ function setParams(p) {
 
 const
 	importRgxp = /\bimport\s+{([^}]*)}\s+from\s+(['"])vue\2/g,
-	exportRgxp = /\bexport\s+/g,
-	asRgxp = /\sas\s/g;
+	exportRgxp = /\bexport\s+/g;
+
+const
+	asRgxp = /\sas\s/g,
+	commaRgxp = /\s*,\s*/,
+	colonRgxp = /\s*:\s*/;
 
 function template(id, fn, txt, p) {
 	let code = sfc.compileTemplate({
@@ -32,7 +36,27 @@ function template(id, fn, txt, p) {
 		...p
 	}).code;
 
-	code = code.replace(importRgxp, (_, vars) => `const {${vars.replace(asRgxp, ': ')}} = this.$renderEngine;`);
+	code = code.replace(importRgxp, (_, vars) => {
+		vars = vars.replace(asRgxp, ': ');
+
+		const
+			resolvedVars = [];
+
+		vars.split(commaRgxp).forEach((varDecl) => {
+			const v = varDecl.split(colonRgxp);
+			resolvedVars.push(v[1] ?? v[0]);
+		});
+
+		let
+			res = `let {${vars}} = this.$renderEngine.render;`;
+
+		resolvedVars.forEach((v) => {
+			res += `${v} = ${v}.bind(this);`;
+		});
+
+		return res;
+	});
+
 	code = code.replace(exportRgxp, '');
 
 	code = `{
