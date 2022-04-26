@@ -16,6 +16,14 @@ exports.adapter = function (txt, opt_params, opt_info) {
 	return snakeskin.adapter(txt, {setParams, template}, opt_params, opt_info);
 };
 
+const
+	renderFnRgxp = /render\s*\(.*?\)\s*{/,
+	importDeclRgxp = /\bimport\s+{([^}]*)}\s+from\s+(['"])vue\2/g,
+	exportDeclRgxp = /\bexport\s+/g;
+
+const hoistedVarsRgxp =
+	/(_hoisted_\d+)\s*=\s*(_createElementVNode\.call\([\s\S]+?\)|\{[\s\S]+?})(?=\s*const |\s*function )/g;
+
 function template(id, fn, txt, p) {
 	let code = sfc.compileTemplate({
 		id,
@@ -27,11 +35,14 @@ function template(id, fn, txt, p) {
 		vars = [];
 
 	code = code
-		.replace(/render\s*\(.*?\)\s*{/, 'render() {')
+		.replace(renderFnRgxp, 'render() {')
 
-		.replace(/\bexport\s+/g, '')
+		.replace(exportDeclRgxp, '')
 
-		.replace(/\bimport\s+{([^}]*)}\s+from\s+(['"])vue\2/g, (_, decl) => {
+		.replace(hoistedVarsRgxp, (_, id, decl) =>
+			`${id} = _ctx.$renderEngine.r.interpolateStaticAttrs.call(_ctx, ${decl})\n`)
+
+		.replace(importDeclRgxp, (_, decl) => {
 			decl = decl.replace(/\sas\s/g, ': ');
 
 			decl.split(/\s*,\s*/).forEach((varDecl) => {
@@ -39,19 +50,22 @@ function template(id, fn, txt, p) {
 				vars.push(v[1] ?? v[0]);
 			});
 
-			return `const {${decl}} = _ctx.$renderEngine.render;`;
-		})
+			return `const {${decl}} = _ctx.$renderEngine.r;`;
+		});
 
-		.replace(new RegExp(`\\b(${vars.join('|')})[(](\\s*[)])?`, 'g'), (_, $1, $2) =>
-			$2 ? `${$1}.call(_ctx)` : `${$1}.call(_ctx,`);
+	const
+		renderMethodsRgxp = new RegExp(`\\b(${vars.join('|')})[(](\\s*[)])?`, 'g');
+
+	code = code
+		.replace(renderMethodsRgxp, (_, $1, $2) => $2 ? `${$1}.call(_ctx)` : `${$1}.call(_ctx,`);
 
 	return `${id} = ${fn}return ${toFunction(`${code}; return render;`)}};`;
-
-	function toFunction(code) {
-		return `function (_ctx, _cache) {${code}}`;
-	}
 }
 
 function setParams(p) {
 	return {...p};
+}
+
+function toFunction(code) {
+	return `function (_ctx, _cache) {${code}}`;
 }
