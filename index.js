@@ -47,17 +47,17 @@ function template(id, fn, txt, p) {
 
 			decl.split(/\s*,\s*/).forEach((varDecl) => {
 				const v = varDecl.split(/\s*:\s*/);
-				vars.push(v[1] ?? v[0]);
+				vars.push((v[1] ?? v[0]).trim());
 			});
 
 			return `const {${decl}} = _ctx.$renderEngine.r;`;
 		});
 
 	const
-		renderMethodsRgxp = new RegExp(`\\b(${vars.join('|')})[(](\\s*[)])?`, 'g');
+		renderMethodsRgxp = new RegExp(`\\b(${vars.join('|')})\\s*[(]`, 'g');
 
 	code = code
-		.replace(renderMethodsRgxp, (_, $1, $2) => $2 ? `${$1}.call(_ctx)` : `${$1}.call(_ctx,`);
+		.replace(renderMethodsRgxp, (_, $1) => `${$1}.call(_ctx,`);
 
 	return `${id} = ${fn}return ${toFunction(`${code}; return render;`)}};`;
 }
