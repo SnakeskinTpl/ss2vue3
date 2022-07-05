@@ -40,7 +40,7 @@ function template(id, fn, txt, p) {
 		.replace(exportDeclRgxp, '')
 
 		.replace(hoistedVarsRgxp, (_, id, decl) =>
-			`${id} = _ctx.$renderEngine.r.interpolateStaticAttrs.call(_ctx, ${decl})\n`)
+			`${id} = _ctx.$renderEngine.r.resolveAttrs.call(_ctx, ${decl})\n`)
 
 		.replace(importDeclRgxp, (_, decl) => {
 			decl = decl.replace(/\sas\s/g, ': ');
