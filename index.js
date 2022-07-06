@@ -21,8 +21,11 @@ const
 	importDeclRgxp = /\bimport\s+{([^}]*)}\s+from\s+(['"])vue\2/g,
 	exportDeclRgxp = /\bexport\s+/g;
 
-const hoistedVarsRgxp =
-	/(_hoisted_\d+)\s*=\s*(_createElementVNode\.call\([\s\S]+?\)|\{[\s\S]+?})(?=\s*const |\s*function )/g;
+const hoistedElementsRgxp =
+	/(_hoisted_\d+)\s*=\s*(_createElementVNode\.call\([\s\S]+?\))(?=\s*const |\s*function )/g;
+
+const hoistedPropsRgxp =
+	/(_hoisted_\d+)\s*=\s*(\{[\s\S]+?})(?=\s*const |\s*function )/g;
 
 function template(id, fn, txt, p) {
 	let code = sfc.compileTemplate({
@@ -39,8 +42,11 @@ function template(id, fn, txt, p) {
 
 		.replace(exportDeclRgxp, '')
 
-		.replace(hoistedVarsRgxp, (_, id, decl) =>
+		.replace(hoistedElementsRgxp, (_, id, decl) =>
 			`${id} = _ctx.$renderEngine.r.resolveAttrs.call(_ctx, ${decl})\n`)
+
+		.replace(hoistedPropsRgxp, (_, id, decl) =>
+			`${id} = _ctx.$renderEngine.r.resolveAttrs.call(_ctx, {props: ${decl}}).props\n`)
 
 		.replace(importDeclRgxp, (_, decl) => {
 			decl = decl.replace(/\sas\s/g, ': ');
