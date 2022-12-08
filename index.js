@@ -17,7 +17,7 @@ exports.adapter = function (txt, opt_params, opt_info) {
 };
 
 const
-	renderFnRgxp = /(?:ssrR|r)ender\s*\((.*?)\)\s*{/,
+	renderFnRgxp = /(?<name>(ssrR|r)ender)\s*\((?<args>.*?)\)\s*{/,
 	importDeclRgxp = /\bimport\s+{([^}]*)}\s+from\s+(['"])(.*?)\2/g,
 	exportDeclRgxp = /\bexport\s+/g;
 
@@ -32,11 +32,11 @@ function template(id, fn, txt, p) {
 		{code} = sfc.compileTemplate({id, ...p, source: txt});
 
 	const
-		args = renderFnRgxp.exec(code)[1],
+		fnDecl = renderFnRgxp.exec(code).groups,
 		vars = [];
 
 	code = code
-		.replace(renderFnRgxp, 'render() {')
+		.replace(renderFnRgxp, `${fnDecl.name}() {`)
 		.replace(exportDeclRgxp, '')
 
 		.replace(hoistedElementsRgxp, (_, id, decl) =>
@@ -48,16 +48,18 @@ function template(id, fn, txt, p) {
 		.replace(importDeclRgxp, (_, decl, q, lib) => {
 			decl = decl.replace(/\sas\s/g, ': ');
 
-			if (lib === 'vue') {
-				decl.split(/\s*,\s*/).forEach((varDecl) => {
-					const v = varDecl.split(/\s*:\s*/);
-					vars.push((v[1] ?? v[0]).trim());
-				});
+			switch (lib) {
+				case 'vue':
+					decl.split(/\s*,\s*/).forEach((varDecl) => {
+						const v = varDecl.split(/\s*:\s*/);
+						vars.push((v[1] ?? v[0]).trim());
+					});
 
-				return `const {${decl}} = _ctx.$renderEngine.r;`;
+					return `const {${decl}} = _ctx.$renderEngine.r;`;
+
+				default:
+					return `const {${decl}} = require('${lib}');`;
 			}
-
-			return `const {${decl}} = require('${lib}');`;
 		});
 
 	if (vars.length > 0) {
@@ -65,13 +67,13 @@ function template(id, fn, txt, p) {
 		code = code.replace(renderMethodsRgxp, (_, $1) => `${$1}.call(_ctx,`);
 	}
 
-	return `${id} = ${fn}return ${toFunction(args, `${code}; return render;`)}};`;
+	return `${id} = ${fn}return ${toFunction(fnDecl.name, fnDecl.args, `${code}; return ${fnDecl.name};`)}};`;
 }
 
 function setParams(p) {
 	return {...p};
 }
 
-function toFunction(args, code) {
-	return `function (${args}) {${code}}`;
+function toFunction(name, args, code) {
+	return `function ${name}(${args}) {${code}}`;
 }
