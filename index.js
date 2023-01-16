@@ -27,13 +27,17 @@ const hoistedElementsRgxp =
 const hoistedPropsRgxp =
 	/(_hoisted_\d+)\s*=\s*(\{[\s\S]+?})(?=\s*const |\s*function )/g;
 
+const hoistedResolvers =
+	/const\s+(_(?:component|directive)_\w+?)\s*=\s*(_(?:resolveComponent|resolveDirective)\([\s\S]+?\))(?=\s*const |\s*function )/g;
+
 function template(id, fn, txt, p) {
 	let
 		{code} = sfc.compileTemplate({id, ...p, source: txt});
 
 	const
 		fnDecl = renderFnRgxp.exec(code).groups,
-		vars = [];
+		hoistedVars = new Map(),
+		importedVars = [];
 
 	code = code
 		.replace(renderFnRgxp, `${fnDecl.name}() {`)
@@ -45,6 +49,11 @@ function template(id, fn, txt, p) {
 		.replace(hoistedPropsRgxp, (_, id, decl) =>
 			`${id} = _ctx.$renderEngine.r.resolveAttrs.call(_ctx, {props: ${decl}}).props\n`)
 
+		.replace(hoistedResolvers, (_, id, decl) => {
+			hoistedVars.set(id, decl);
+			return `let ${id};`;
+		})
+
 		.replace(importDeclRgxp, (_, decl, q, lib) => {
 			decl = decl.replace(/\sas\s/g, ': ');
 
@@ -52,7 +61,7 @@ function template(id, fn, txt, p) {
 				case 'vue':
 					decl.split(/\s*,\s*/).forEach((varDecl) => {
 						const v = varDecl.split(/\s*:\s*/);
-						vars.push((v[1] ?? v[0]).trim());
+						importedVars.push((v[1] ?? v[0]).trim());
 					});
 
 					return `const {${decl}} = _ctx.$renderEngine.r;`;
@@ -62,8 +71,13 @@ function template(id, fn, txt, p) {
 			}
 		});
 
-	if (vars.length > 0) {
-		const renderMethodsRgxp = new RegExp(`\\b(${vars.join('|')})\\s*[(]`, 'g');
+	if (hoistedVars.size > 0) {
+		const varsRgxp = new RegExp(`(?<!\\blet\\s+)\\b(${[...hoistedVars.keys()].join('|')})\\b`, 'g');
+		code = code.replace(varsRgxp, (_, $1) => `(${$1} = ${$1} || ${hoistedVars.get($1)})`);
+	}
+
+	if (importedVars.length > 0) {
+		const renderMethodsRgxp = new RegExp(`\\b(${importedVars.join('|')})\\s*[(]`, 'g');
 		code = code.replace(renderMethodsRgxp, (_, $1) => `${$1}.call(_ctx,`);
 	}
 
