@@ -67,7 +67,7 @@ function template(id, fn, txt, p) {
 					return `const {${decl}} = _ctx.$renderEngine.r;`;
 
 				default:
-					return `const {${decl}} = require('${lib}');`;
+					return `const {${decl}} = _ctx.$renderEngine.wrapAPI.call(_ctx, '${lib}', require('${lib}'));`;
 			}
 		});
 
