@@ -27,8 +27,11 @@ const hoistedElementsRgxp =
 const hoistedPropsRgxp =
 	/(_hoisted_\d+)\s*=\s*(\{[\s\S]+?})(?=\s*const |\s*function )/g;
 
-const hoistedResolvers =
+const hoistedResolversRgxp =
 	/const\s+(_(?:component|directive)_\w+?)\s*=\s*(_(?:resolveComponent|resolveDirective)\([\s\S]+?\))(?=\s*const |\s*function )/g;
+
+const constLetRgxp =
+	/\b(?:const|let)(\s)/g;
 
 function template(id, fn, txt, p) {
 	let
@@ -49,7 +52,7 @@ function template(id, fn, txt, p) {
 		.replace(hoistedPropsRgxp, (_, id, decl) =>
 			`${id} = _ctx.$renderEngine.r.resolveAttrs.call(_ctx, {props: ${decl}}).props\n`)
 
-		.replace(hoistedResolvers, (_, id, decl) => {
+		.replace(hoistedResolversRgxp, (_, id, decl) => {
 			hoistedVars.set(id, decl);
 			return `let ${id};`;
 		})
@@ -81,6 +84,7 @@ function template(id, fn, txt, p) {
 		code = code.replace(renderMethodsRgxp, (_, $1) => `${$1}.call(_ctx,`);
 	}
 
+	code = code.replace(constLetRgxp, 'var$1');
 	return `${id} = ${fn}return ${toFunction(fnDecl.name, fnDecl.args, `${code}; return ${fnDecl.name};`)}};`;
 }
 
