@@ -33,6 +33,10 @@ const hoistedResolversRgxp =
 const constLetRgxp =
 	/\b(?:const|let)(\s)/g;
 
+const
+	restArgsRgxp = /\w+\.\$restArgs/g,
+	withCtxRgxp = /withCtx$/;
+
 function template(id, fn, txt, p) {
 	let
 		{code} = sfc.compileTemplate({id, ...p, source: txt});
@@ -80,11 +84,27 @@ function template(id, fn, txt, p) {
 	}
 
 	if (importedVars.length > 0) {
+		const
+			withCtx = importedVars.find((name) => withCtxRgxp.test(name));
+
+		if (withCtx != null) {
+			const
+				withCtxMethodRgxp = new RegExp(`\\${withCtx}\\s*[(]([(]*)([^)]*)`, 'g');
+
+			code = code.replace(withCtxMethodRgxp, (_, blocks, args) => {
+				args = args.trim() === '' ? '__skip__, $restArgs' : `${args}, $restArgs`;
+				return `${withCtx}.call(_ctx,${blocks}${args}`;
+			});
+		}
+
 		const renderMethodsRgxp = new RegExp(`\\b(${importedVars.join('|')})\\s*[(]`, 'g');
-		code = code.replace(renderMethodsRgxp, (_, $1) => `${$1}.call(_ctx,`);
+		code = code.replace(renderMethodsRgxp, (_, fn) => `${fn}.call(_ctx,`);
 	}
 
-	code = code.replace(constLetRgxp, 'var$1');
+	code = code
+		.replace(restArgsRgxp, '$restArgs')
+		.replace(constLetRgxp, 'var$1');
+
 	return `${id} = ${fn}return ${toFunction(fnDecl.name, fnDecl.args, `${code}; return ${fnDecl.name};`)}};`;
 }
 
