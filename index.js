@@ -38,6 +38,13 @@ const
 	withCtxRgxp = /withCtx$/;
 
 function template(id, fn, txt, p) {
+	if (p.ssr) {
+		p.compilerOptions = {
+			...p.compilerOptions,
+			hoistStatic: true
+		};
+	}
+
 	let
 		{code} = sfc.compileTemplate({id, ...p, source: txt});
 
@@ -46,8 +53,10 @@ function template(id, fn, txt, p) {
 		hoistedVars = new Map(),
 		importedVars = [];
 
+	let
+		importCode = '';
+
 	code = code
-		.replace(renderFnRgxp, `${fnDecl.name}() {`)
 		.replace(exportDeclRgxp, '')
 
 		.replace(hoistedElementsRgxp, (_, id, decl) =>
@@ -71,12 +80,17 @@ function template(id, fn, txt, p) {
 						importedVars.push((v[1] ?? v[0]).trim());
 					});
 
-					return `const {${decl}} = _ctx.$renderEngine.r;`;
+					importCode += `const {${decl}} = _ctx.$renderEngine.r;`;
+					break;
 
 				default:
-					return `const {${decl}} = _ctx.$renderEngine.wrapAPI.call(_ctx, '${lib}', require('${lib}'));`;
+					importCode += `const {${decl}} = _ctx.$renderEngine.wrapAPI.call(_ctx, '${lib}', require('${lib}'));`;
 			}
-		});
+
+			return p.ssr ? '' : importCode;
+		})
+
+		.replace(renderFnRgxp, `${fnDecl.name}() { ${p.ssr ? importCode : ''}`)
 
 	if (hoistedVars.size > 0) {
 		const varsRgxp = new RegExp(`(?<!\\blet\\s+)\\b(${[...hoistedVars.keys()].join('|')})\\b`, 'g');
