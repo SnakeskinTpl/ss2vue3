@@ -90,7 +90,7 @@ function template(id, fn, txt, p) {
 			return p.ssr ? '' : importCode;
 		})
 
-		.replace(renderFnRgxp, `${fnDecl.name}() { ${p.ssr ? importCode : ''}`)
+		.replace(renderFnRgxp, `${fnDecl.name}() { ${p.ssr ? importCode : ''}`);
 
 	if (hoistedVars.size > 0) {
 		const varsRgxp = new RegExp(`(?<!\\blet\\s+)\\b(${[...hoistedVars.keys()].join('|')})\\b`, 'g');
