@@ -37,6 +37,11 @@ const
 	restArgsRgxp = /\w+\.\$restArgs/g,
 	withCtxRgxp = /withCtx$/;
 
+const
+	templateTagInterpolationRgxp = /__TAG_INTERPOLATION:\\(\$\{.*?})%/g,
+	staticTagInterpolationRgxp = /(["'])__TAG_INTERPOLATION:\$\{(.*?)}%\1/g,
+	normalizeInterpolation = (body) => body.replace(/\\/g, '');
+
 function template(id, fn, txt, p) {
 	if (p.ssr) {
 		p.compilerOptions = {
@@ -58,6 +63,9 @@ function template(id, fn, txt, p) {
 
 	code = code
 		.replace(exportDeclRgxp, '')
+
+		.replace(templateTagInterpolationRgxp, (_, body) => normalizeInterpolation(body))
+		.replace(staticTagInterpolationRgxp, (_, _q, body) => normalizeInterpolation(body))
 
 		.replace(hoistedElementsRgxp, (_, id, decl) =>
 			`${id} = _ctx.$renderEngine.r.resolveAttrs.call(_ctx, ${decl})\n`)
