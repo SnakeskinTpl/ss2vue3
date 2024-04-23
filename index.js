@@ -38,8 +38,8 @@ const
 	withCtxRgxp = /withCtx$/;
 
 const
-	templateTagInterpolationRgxp = /__TAG_INTERPOLATION:\\(\$\{.*?})%/g,
-	staticTagInterpolationRgxp = /(["'])__TAG_INTERPOLATION:\$\{(.*?)}%\1/g,
+	templateTagInterpolationRgxp = /__TAG_INTERPOLATION:\\(\$\{.*?})\\\$/g,
+	staticTagInterpolationRgxp = /(["'])__TAG_INTERPOLATION:\$\{(.*?)}\$\1/g,
 	normalizeInterpolation = (body) => body.replace(/\\/g, '');
 
 function template(id, fn, txt, p) {
